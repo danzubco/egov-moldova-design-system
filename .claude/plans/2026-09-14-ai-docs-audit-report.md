@@ -63,12 +63,23 @@ Each finding: **symptom** · **located cause** · **evidence** · **why it matte
 - **Cause**: `.husky/pre-commit` and `.husky/commit-msg` were removed in `0d23e93`
   (2026-06-15). `package.json` `prepare` still runs `husky install`.
 - **Stale claims** ("the pre-commit hook auto-unstages generated files, so `git add -A` is
-  harmless"):
+  harmless") in nine files:
   - `AGENTS.md:157`
   - `_agents/anti-patterns.md:24`
+  - `scripts/audit/CLEANUP.md:84`
   - `.claude/commands/migrate-component.md:135`
   - `.claude/skills/parallel-aux-tasks/SKILL.md:179`
-  - `CONTRIBUTING.md:221,237` (commitlint via Husky `commit-msg`)
+  - `.claude/agents/custom-component.md:187`, `new-component.md:242`,
+    `redesign-component.md:304`, `refactor-component.md:210`
+  - plus `CONTRIBUTING.md:221,237` (commitlint via Husky `commit-msg`)
+- **The post-merge hint is dead too.** `prepare` runs `husky install`; Husky `9.1.7` marks it
+  deprecated but still sets `core.hooksPath=.husky/_`. With `core.hooksPath` set, git ignores
+  `.git/hooks/`, which is exactly where `scripts/git/setup-merge-drivers.sh` writes the
+  `post-merge` hint `AGENTS.md` describes. Every contributor who ran `yarn install` with scripts
+  has neither the pre-commit net nor the post-merge hint.
+- **The deleted hook differed from the docs.** It also ran `yarn typecheck && yarn lint &&
+  yarn test` on every commit, and it deliberately did not unstage `src/components.d.ts`, which
+  `AGENTS.md` lists as never-stage.
 - **Second net, also gone upstream**: the local `.github/workflows/ci.yml` still has the
   `Validate (PR)` → "Verify no stale generated files" step. `egov-moldova/design-system`
   `main` has a rewritten CI (Lint / Typecheck / Test / Dependencies audit / Build) with no
@@ -98,14 +109,15 @@ Each finding: **symptom** · **located cause** · **evidence** · **why it matte
 | Claim | Where | Reality |
 | --- | --- | --- |
 | Node `>=22` | `AGENTS.md:5`, `_agents/cross-platform-guide.md` | `engines.node` `>=24.0.0 <25.0.0` |
-| Style Dictionary `4.x` | `AGENTS.md:5` | `style-dictionary ^5.4.1` |
+| Style Dictionary `4.x` | `AGENTS.md:5`, `STACK.md:32` (rationale heading) | `style-dictionary ^5.4.1` |
+| Node `>= 22` | `.specs/PROJECT-SPECIFICATION.md:25` | `>=24 <25` |
 | Context7 "configured in `.mcp.json`" | `AGENTS.md:7`, `_agents/mcp-tools.md:17` | not in `.mcp.json` |
 | Jest 30.x for unit + E2E | `.specs/PROJECT-SPECIFICATION.md:23` | Vitest 4 + `@stencil/vitest` |
 | Jest in the CPU budget | `.claude/kanban/README.md:48` | Vitest |
 | Node `>=22` | `.claude/agents/audit-production.md:65` | `>=24 <25` |
 | Webpack / Rollup / esbuild | `INTEGRATION.md:3`, `README.md:111`, `web-components/README.md:17` | needs manual check — may be legitimate consumer-bundler guidance |
 
-`STACK.md` is the one document whose version table matches `package.json`.
+`STACK.md`'s version table matches `package.json`; its own rationale heading at `:32` does not.
 
 **False positives (not defects)**: the scanner's "Jest" hits in
 `.claude/agents/test-writer.md:12`, `src/components/_agents/testing.md:5`,
@@ -162,6 +174,8 @@ not configured, and the failure is silent.
 
 - `src/components/AGENTS.md:43-47` lists root-level files as `_agents/typescript-strict.md`
   etc. Relative to that file they do not exist; the real paths are `../../_agents/…`.
+  `tokens/AGENTS.md` does the same with `_agents/pre-implementation.md`. Six unresolvable
+  index paths in total.
 - `tokens/AGENTS.md` cites `.claude/plans/analizeaza-structura-la-fisierul-breezy-tower.md`
   (PR C) — the file does not exist.
 - `.claude/skills/audit-component/SKILL.md:698,875` → `src/components/_agents/anti-patterns.md`
@@ -175,8 +189,13 @@ not configured, and the failure is silent.
 - `src/components/_agents/component-structure.md:172`, `src/components/_agents/css-architecture.md:98`,
   `tokens/AGENTS.md:172`, `tokens/_agents/token-structure.md:149` correct external skills from
   the pre-Claude-Code tooling era (`stenciljs`, `stencil-atomic`), which are not in the repo.
-- They carry rename leftovers: `component-structure.md:178` — "Use `cor` prefix:
-  `@Event() mudButtonClick`".
+- They carry rename leftovers: `component-structure.md:180` — "Use `cor` prefix:
+  `@Event() mudButtonClick`"; `composition-interactive.md:76` — "`@Event()` with `cor` prefix".
+- The exception is `_agents/mcp-tools.md:349` ("Skill File Tool Name Corrections"): live files
+  still use the old tool spellings it corrects (`figma_get_…`, `playwright_…`) —
+  `.claude/commands/audit-accessibility.md` 18 times, `pre-pr-check.md` 3,
+  `modify-component.md` 3, `.claude/agents/custom-component.md` 2. That table is still load-bearing
+  until those spellings are replaced.
 - `tokens/AGENTS.md:172` and `tokens/_agents/token-structure.md:149` are the same table twice.
 - **Why it matters**: the table form is valuable when it corrects what a model *assumes*;
   aimed at a vanished skill it is noise, and the leftover prefix is wrong advice.
